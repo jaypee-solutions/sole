@@ -71,15 +71,17 @@ void loop() {
   }
 
   if (targetPunmpState != currentPunmpState) {
-    if (switchTimer >= switchDelay){
-    currentPunmpState = targetPunmpState;
-    switchTimer = 0;
-    digitalWrite(pumpPin, currentPunmpState);
+    if (switchTimer >= switchDelay) {
+      currentPunmpState = targetPunmpState;
+      switchTimer = 0;
+      digitalWrite(pumpPin, currentPunmpState);
     }
     else
     {
       switchTimer++;
     }
+  } else {
+    switchTimer = 0;
   }
 
   buttonState = digitalRead(buttonPin);
