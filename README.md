@@ -10,7 +10,7 @@
   * SPI library
 4. In der Arduiono IDE die `sole.ino` öffnen
 5. Unter Werkzeuge -> Board `Arduino Nano` wählen
-6. Unter Werkzeuge -> Port den Port des Arduion wählen
+6. Unter Werkzeuge -> Port den Port des Arduino wählen
 
 ## Verstellparameter
 ```
