@@ -85,7 +85,7 @@ void loop() {
   }
 
   buttonState = digitalRead(buttonPin);
-  if (buttonState == HIGH) {
+  if (buttonState == LOW) {
     display.ssd1306_command(SSD1306_DISPLAYON);
     display.clearDisplay();
     display.setTextSize(1);
