@@ -22,8 +22,8 @@ const int switchDelay = 900;
 
 uint16_t temperature = 0;
 float Temperatur_C = 0;
-float temp_high_off = 24;
-float temp_low_off = 7;
+float temp_high_off = 23;
+float temp_low_off = 0.5;
 float histeresis = 0.5;
 
 int ledState = LOW;
