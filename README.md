@@ -5,12 +5,12 @@
 2. Arduino IDE starten und über Sketch -> Bibliothek einbinden -> Bibliotheken verwalten den Bibliotheksverwalter starten.
 3. Installieren der Bibliotheken
   * Adafruit_SSD1306
+  * Adafruit GFX
   * TSIC
-  * Wire
-  * SPI library
-4. In der Arduiono IDE die `sole.ino` öffnen
-5. Unter Werkzeuge -> Board `Arduino Nano` wählen
-6. Unter Werkzeuge -> Port den Port des Arduino wählen
+4. Adafruit_SSD1306.h auf Displaygröße anpassen 64 Pixel
+5. In der Arduiono IDE die `sole.ino` öffnen
+6. Unter Werkzeuge -> Board `Arduino Nano` wählen
+7. Unter Werkzeuge -> Port den Port des Arduino wählen
 
 ## Verstellparameter
 ```
