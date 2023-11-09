@@ -1,35 +1,41 @@
-#include "TSIC.h"       // include the library
+#include "TSIC.h"  // include the library
 #include <SPI.h>
 #include <Wire.h>
 #include <Adafruit_SSD1306.h>
 
-#define OLED_RESET 4
-Adafruit_SSD1306 display(OLED_RESET);
+#define ONE_DAY_IN_SECONDS 86400
 
-#if (SSD1306_LCDHEIGHT != 64)
-#error("Height incorrect, please fix Adafruit_SSD1306.h!");
-#endif
 
-TSIC Sensor1(3, 2);    // Signalpin, VCCpin, Sensor Type
+#define SCREEN_WIDTH 128  // OLED display width, in pixels
+#define SCREEN_HEIGHT 64  // OLED display height, in pixels
+
+#define OLED_RESET -1        // Reset pin # (or -1 if sharing Arduino reset pin)
+#define SCREEN_ADDRESS 0x3C  // I2C Address of screen
+
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+
+
+TSIC Sensor1(3, 2);  // Signalpin, VCCpin, Sensor Type
 //TSIC Sensor1(4);    // only Signalpin, VCCpin unused by default
 
-const int ledPin =  LED_BUILTIN;
+const int ledPin = LED_BUILTIN;
 const int buttonPin = 4;
 const int pumpOn = LOW;
 const int pumpOff = HIGH;
 const int pumpPin = 10;
-const int switchDelay = 900;
+const int switchDelay = 1800; // prevent switching pump to frequently, wait at least 30 minutes before switching
+unsigned long pumpSaferCounter = 0;
 
 uint16_t temperature = 0;
-float Temperatur_C = 0;
+float Temperatur_C = 10;
 float temp_high_off = 23;
 float temp_low_off = 5.5;
 float histeresis = 0.5;
 
 int ledState = LOW;
 int buttonState = 0;
-int currentPunmpState = pumpOff;
-int targetPunmpState = pumpOff;
+int currentPumpState = pumpOff;
+int targetPumpState = pumpOff;
 int switchTimer = 0;
 
 void setup() {
@@ -39,12 +45,19 @@ void setup() {
   digitalWrite(buttonPin, HIGH);
   pinMode(pumpPin, OUTPUT);
   digitalWrite(pumpPin, pumpOff);
-  display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
+  display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS);
   display.display();
   display.clearDisplay();
 }
 
 void loop() {
+
+  pumpSaferCounter++;
+
+  if (currentPumpState == pumpOn)
+    pumpSaferCounter = 0; // reset counter as long as pump is running
+
+
   if (Sensor1.getTemperature(&temperature)) {
     Temperatur_C = Sensor1.calc_Celsius(&temperature);
     Serial.print("Temperature: ");
@@ -60,24 +73,26 @@ void loop() {
   digitalWrite(ledPin, ledState);
 
   if (Temperatur_C <= (temp_low_off - histeresis)) {
-    targetPunmpState = pumpOn;
-  }
-  else if (Temperatur_C >= temp_low_off && Temperatur_C <= (temp_high_off - histeresis)) {
-    targetPunmpState = pumpOff;
-  }
-  else if (Temperatur_C >= temp_high_off)
-  {
-    targetPunmpState = pumpOn;
+    targetPumpState = pumpOn;
+  } else if (Temperatur_C >= temp_low_off && Temperatur_C <= (temp_high_off - histeresis)) {
+    targetPumpState = pumpOff;
+  } else if (Temperatur_C >= temp_high_off) {
+    targetPumpState = pumpOn;
+    switchTimer = switchDelay; // set switch timer to delay value to start immediately
   }
 
-  if (targetPunmpState != currentPunmpState) {
+   if (pumpSaferCounter >= ONE_DAY_IN_SECONDS) {
+    targetPumpState = pumpOn;
+    switchTimer = switchDelay;
+    pumpSaferCounter = 0;
+   }
+
+  if (targetPumpState != currentPumpState) {
     if (switchTimer >= switchDelay) {
-      currentPunmpState = targetPunmpState;
+      currentPumpState = targetPumpState;
       switchTimer = 0;
-      digitalWrite(pumpPin, currentPunmpState);
-    }
-    else
-    {
+      digitalWrite(pumpPin, currentPumpState);
+    } else {
       switchTimer++;
     }
   } else {
@@ -85,32 +100,29 @@ void loop() {
   }
 
   buttonState = digitalRead(buttonPin);
-  if (buttonState == LOW) {
+  if (buttonState == HIGH) {
     display.ssd1306_command(SSD1306_DISPLAYON);
     display.clearDisplay();
     display.setTextSize(1);
     display.setTextColor(WHITE);
     display.setCursor(0, 0);
-    display.println("Aussentemperatur:");
-    display.setTextSize(2);
+    display.print("Aussentemp: ");
     display.println(Temperatur_C);
-    display.setTextSize(1);
-    display.println("");
-    display.println("Pumpe:");
-    display.setTextSize(2);
+    display.drawCircle(105, 2, 2, WHITE);
+    display.println("---------------------");
+    display.print("Pumpe:      ");
 
-    if (currentPunmpState == pumpOff)
-    {
+    if (currentPumpState == pumpOff) {
       display.println("Aus");
-    }
-    else
-    {
+    } else {
       display.println("An");
     }
-    display.setTextSize(1);
-    display.print(switchTimer);
-    display.print("/");
-    display.print(switchDelay);
+    display.println("---------------------");
+    display.print("Entprellen: ");
+    display.println(secondsToHumanReadable(switchTimer));
+    display.println("---------------------");
+    display.print("Aus seit:   ");
+    display.println(secondsToHumanReadable(pumpSaferCounter));
     display.display();
   } else {
     display.ssd1306_command(SSD1306_DISPLAYOFF);
@@ -121,3 +133,19 @@ void loop() {
   //delay(switchTimer);
 }
 
+String secondsToHumanReadable(unsigned long seconds) {
+  unsigned long minutes = seconds / 60;
+  unsigned long hours = minutes / 60;
+  unsigned long days = hours / 24;
+  seconds %= 60;
+  minutes %= 60;
+  hours %= 24;
+  return addLeadingZeroIfLessThanTen(hours) + ":" + addLeadingZeroIfLessThanTen(minutes) + ":" + addLeadingZeroIfLessThanTen(seconds);
+}
+
+String addLeadingZeroIfLessThanTen(unsigned long value) {
+  if (value < 10){
+    return "0" + String(value);
+  }
+  return String(value);
+}
